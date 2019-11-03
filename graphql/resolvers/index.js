@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 
 const Event = require("../../models/event");
 const User = require("../../models/user");
+const Booking = require("../../models/booking");
 
 const events = async eventIds => {
   try {
@@ -18,15 +19,22 @@ const events = async eventIds => {
   }
 };
 
+const singleEvent = async eventId => {
+  try {
+    const event = await Event.findById(eventId);
+    return { ...event._doc, creator: user.bind(this, event.creator) }
+  } catch (error) {
+    throw error;
+  }
+}
+
 const user = async userId => {
   try {
-    const users = User.findById(userId);
-    return users.map(user => {
-      return {
-        ...user._doc,
-        createdEvents: events.bind(this, user._doc.createdEvents)
-      };
-    });
+    const users = await User.findById(userId);
+    return {
+      ...user._doc,
+      createdEvents: events.bind(this, user._doc.createdEvents)
+    };
   } catch (error) {
     throw error;
   }
@@ -42,6 +50,22 @@ module.exports = {
           date: new Date(event._doc.date).toISOString(),
           creator: user.bind(this, event._doc.creator)
         };
+      });
+    } catch (error) {
+      throw error;
+    }
+  },
+  bookings: async () => {
+    try {
+      const bookings = await Booking.find();
+      return bookings.map(booking => {
+        return {
+          ...booking._doc,
+          user: user.bind(this.booking._doc.user),
+          event: singleEvent.bind(this, booking._doc.event),
+          createdAt: new Date(booking._doc.createdAt).toISOString(),
+          updatedAt: new Date(booking._doc.updatedAt).toISOString()
+        }
       });
     } catch (error) {
       throw error;
@@ -90,6 +114,21 @@ module.exports = {
       return { ...result._doc, password: null };
     } catch (error) {
       throw error;
+    }
+  },
+  bookEvent: async args => {
+    const fetchedEvent = await Event.findOne({ _id: args.eventId });
+    const booking = new Booking({
+      user: "5dbc89b2e6bc0424901d4071",
+      event: fetchedEvent
+    });
+    const result = await booking.save();
+    return {
+      ...result._doc,
+      user: user.bind(this.booking._doc.user),
+      event: singleEvent.bind(this, booking._doc.event),
+      createdAt: new Date(result._doc.createdAt).toISOString(),
+      updatedAt: new Date(result._doc.updatedAt).toISOString()
     }
   }
 };
